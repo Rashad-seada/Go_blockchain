@@ -6,33 +6,34 @@ import (
 )
 
 type LocalTransport struct {
-	Address NetworkAddress
+	TransportAddress NetworkAddress
 	consumeChannal chan RPC
 	lock    sync.RWMutex
 	peers   map[NetworkAddress]*LocalTransport
 }
 
-func NewLocalTransport(address NetworkAddress) *LocalTransport {
+
+func NewLocalTransport(address NetworkAddress) Transport {
 	return &LocalTransport{
-		Address: address,
+		TransportAddress: address,
 		consumeChannal: make(chan RPC,1024),
 		peers: make(map[NetworkAddress]*LocalTransport),
 	}
 }
 
-func (transport *LocalTransport) consume() <-chan RPC {
+func (transport *LocalTransport) Consume() <-chan RPC {
 	return transport.consumeChannal
 }
 
-func (localtransport *LocalTransport) connect(transport Transport) error {
+func (localtransport *LocalTransport) Connect(transport Transport) error {
 	localtransport.lock.Lock()
 	defer localtransport.lock.Unlock()
 
-	localtransport.peers[transport.address()] = transport.(*LocalTransport)
+	localtransport.peers[transport.Address()] = transport.(*LocalTransport)
 	return nil
 }
 
-func (transport *LocalTransport) sendMessage(to NetworkAddress,payload []byte) error {
+func (transport *LocalTransport) SendMessage(to NetworkAddress,payload []byte) error {
 	transport.lock.RLock()
 	defer transport.lock.RUnlock()
 
@@ -42,15 +43,15 @@ func (transport *LocalTransport) sendMessage(to NetworkAddress,payload []byte) e
 	}
 
 	peer.consumeChannal <- RPC{
-		from: transport.Address,
+		from: transport.TransportAddress,
 		payload: payload,
 	}
 
 	return nil
 }
 
-func (tranport *LocalTransport) address() NetworkAddress {
-	return tranport.Address
+func (tranport *LocalTransport) Address() NetworkAddress {
+	return tranport.TransportAddress
 }
 
 
