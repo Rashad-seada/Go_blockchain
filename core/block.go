@@ -92,7 +92,7 @@ type Block struct {
 	Data   Data
 }
 
-func (b *Block) Hash() types.Hash{
+func (b *Block) CalculateHash() types.Hash{
 		buf := &bytes.Buffer{}
 		b.Header.EncodeBinary(buf)
 		b.Data.EncodeBinary(buf)
