@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"io"
+	"time"
 )
 
 type Data struct {
@@ -35,7 +36,7 @@ type Header struct {
 	Height      uint32
 	hash        types.Hash
 	PrevousHash types.Hash
-	TimpStamp   uint64
+	TimpStamp   time.Time
 	Nounce      uint32
 }
 
@@ -92,12 +93,19 @@ type Block struct {
 	Data   Data
 }
 
-func (b *Block) CalculateHash() types.Hash{
+
+func (b *Block) CalculateHash() types.Hash {
+
+	if b.Header.hash.IsZero() {
 		buf := &bytes.Buffer{}
 		b.Header.EncodeBinary(buf)
 		b.Data.EncodeBinary(buf)
 		hash := sha256.Sum256(buf.Bytes())
+		b.Header.hash = hash
 		return types.Hash(hash)
+	}
+	
+	return b.Header.Hash()
 }
 
 func (b *Block) EncodeBinary(w io.Writer) error {

@@ -4,6 +4,7 @@ import (
 	"blockchain/types"
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ func TestHeaderDecodeAndEncode(t *testing.T) {
 		Height: 10,
 		hash: types.RandomHash(32),
 		PrevousHash: types.RandomHash(32),
-		TimpStamp: 1000,
+		TimpStamp: time.Now(),
 		Nounce: 100,
 	}
 
@@ -36,7 +37,7 @@ func TestBlockDecodeAndEncode(t *testing.T) {
 		Height: 10,
 		hash: types.RandomHash(32),
 		PrevousHash: types.RandomHash(32),
-		TimpStamp: 1000,
+		TimpStamp: time.Now(),
 		Nounce: 100,
 	}
 
@@ -61,4 +62,26 @@ func TestBlockDecodeAndEncode(t *testing.T) {
 
 	assert.Equal(t,b,bDecoded)
 		
+}
+
+func TestBlockHash(t *testing.T){
+	h := Header{
+		Version: 1,
+		Height: 10,
+		PrevousHash: types.RandomHash(32),
+		TimpStamp: time.Now(),
+		Nounce: 100,
+	}
+
+	d := Data{
+		Transactions: make([]Transaction, 12),
+	}
+
+	b := Block{
+		Header: h,
+		Data: d,
+	}
+
+	assert.NotNil(t,b.CalculateHash())
+
 }
