@@ -1,38 +1,57 @@
 package core
 
 import (
+	"blockchain/crypto"
 	"blockchain/types"
 	"bytes"
-	"crypto/sha256"
-	"encoding/binary"
-
-	"io"
+	"crypto/ecdsa"
+	"encoding/gob"
+	"fmt"
 )
 
 type Transaction struct {
-	data []byte
-	hash types.Hash
+	Data []byte
+	Hash types.Hash
+	publicKey *ecdsa.PublicKey
+	Signature *crypto.Signature
 }
 
-func (t *Transaction) CalculateHash() types.Hash {
-	buf := &bytes.Buffer{}
-	t.EncodeBinary(buf)
-	hash := sha256.Sum256(buf.Bytes())
-	t.hash = hash
+func (t *Transaction) TransactionBytes() []byte {
+	buffer := &bytes.Buffer{}
+	encoder := gob.NewEncoder(buffer)
 
-	return hash
+	encoder.Encode(t)
+	return buffer.Bytes()
 }
 
-func (t *Transaction) EncodeBinary(w io.Writer) error {
-	if err := binary.Write(w,binary.LittleEndian, t.hash) ; err != nil {
-		return nil
+func (t *Transaction) Sign(k crypto.Keypair)  error {
+	sig , err := k.Sign(t.Data)
+	if err != nil {
+		return err 
 	}
-	return binary.Write(w,binary.LittleEndian,t.data)
+
+	t.publicKey = k.PublicKey
+	t.Signature = sig
+
+	return nil
 }
 
-func (t *Transaction) DecodeBinary(r io.Reader) error {
-	if err := binary.Read(r,binary.LittleEndian, &t.hash) ; err != nil {
-		return nil
+func (t *Transaction) Verify() error {
+	if t.Signature == nil {
+		return fmt.Errorf("the Transaction has no signature")
 	}
-	return binary.Read(r,binary.LittleEndian,&t.data)
+
+	if !t.Signature.Verify(t.publicKey,t.Data) {
+		return fmt.Errorf("invalid transaction signature ")
+	}
+
+	return nil
+}
+
+func (t *Transaction) CalculateHash(hasher Hasher[*Transaction]) types.Hash {
+	if t.Hash.IsZero() {
+		t.Hash = hasher.Hash(t)
+	}
+
+	return t.Hash
 }

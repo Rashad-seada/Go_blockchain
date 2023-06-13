@@ -9,12 +9,12 @@ import (
 	"math/big"
 )
 
-type Singnature struct {
+type Signature struct {
 	r *big.Int
 	s *big.Int
 }
 
-func (s *Singnature) Verify(k *ecdsa.PublicKey, data []byte) bool {
+func (s *Signature) Verify(k *ecdsa.PublicKey, data []byte) bool {
 	return ecdsa.Verify(k,data,s.r,s.s)
 }
 
@@ -29,12 +29,12 @@ func (k *Keypair) Address() types.Address {
 	return types.NewAddressFromBytes(h[len(h)-20:])
 }
 
-func (k *Keypair) Sign(data []byte) (*Singnature,error) { 
+func (k *Keypair) Sign(data []byte) (*Signature,error) { 
 	r , s ,err := ecdsa.Sign(rand.Reader,k.PrivateKey,data)
 	if err != nil {
 		return nil , err
 	}
-	return &Singnature{r:r,s:s} , nil
+	return &Signature{r:r,s:s} , nil
 }
 
 func GeneratePrivatekey() *ecdsa.PrivateKey {

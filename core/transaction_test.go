@@ -1,27 +1,51 @@
 package core
 
 import (
-	"bytes"
+	"blockchain/crypto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTransactionEncodingAndDecoding(t *testing.T) {
+func TestTransaction(t *testing.T) {
+
+	Keypair := crypto.GenerateUniqueKeypair()
+	tx1 := Transaction{
+		Data: []byte("this code is written by the best coder of all times"),
+	}
+
+	assert.Nil(t,tx1.Sign(*Keypair))
+	assert.NotNil(t,tx1.Signature)
+}
+
+func TestTransactionSignature(t *testing.T) {
+	Keypair := crypto.GenerateUniqueKeypair()
+	tx1 := Transaction{
+		Data: []byte("this code is written by the best coder of all times"),
+	}
+
+	assert.Nil(t,tx1.Sign(*Keypair))
+	assert.NotNil(t,tx1.Signature)
+}
+
+func TestTransactionVerfication(t *testing.T) {
+	
+	Keypair1 := crypto.GenerateUniqueKeypair()
+	Keypair2 := crypto.GenerateUniqueKeypair()
 
 	tx1 := Transaction{
-		data: make([]byte, 12),
+		Data: []byte("this code is written by the best coder of all times"),
 	}
-	tx1.CalculateHash()
 
-	buf := &bytes.Buffer{}
+	assert.Nil(t,tx1.Sign(*Keypair1))
+	assert.Nil(t,tx1.Verify())
 
-	tx2 := Transaction{}
+	assert.NotNil(t,tx1.Signature.Verify(Keypair2.PublicKey,tx1.Data))
 
-	assert.Nil(t,tx1.EncodeBinary(buf))
-
-	assert.Nil(t,tx2.DecodeBinary(buf))
-
-	assert.Equal(t,tx1,tx2.DecodeBinary(buf))
+	tx1.Data = []byte("rashad")
+	assert.NotNil(t,tx1.Verify())
 
 }
+	
+
+

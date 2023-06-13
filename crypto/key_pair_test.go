@@ -17,13 +17,12 @@ func TestGeneratePairOfKeys(t *testing.T) {
 	fmt.Println(">>",PrivateKey)
 	fmt.Println(">>",PublicKey)
 	fmt.Println(">>",Address)
-
 }
 
 func TestKeySignatureVerify(t *testing.T) {
 	keypair1 := GenerateUniqueKeypair()
 	keypair2 := GenerateUniqueKeypair()
-	
+
 	msg := []byte("Hello world")
 	sig , err := keypair1.Sign(msg)
 
