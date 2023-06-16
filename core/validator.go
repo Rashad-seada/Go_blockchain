@@ -1,6 +1,8 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Validator[T any] interface {
 	ValidateBlock(*T) error
@@ -19,13 +21,27 @@ func NewBlockValidator(chain *Blockchain) Validator[Block] {
 func (v *BlockValidator) ValidateBlock(b *Block) error {
 
 	if v.chain.HasBlock(b.Header.Height) {
-		return fmt.Errorf("chain already contains block (%d) with hash (%s)",b.Header.Height,b.CalculateHash(BlockHasher{}))
+		return fmt.Errorf("chain already contains block (%d) with hash (%s)", b.Header.Height, b.Hash(BlockHasher{}))
 	}
 
-	if err := b.Verify();err != nil {
+	if b.Header.Height != v.chain.Height()+1 {
+		return fmt.Errorf("Block you tried adding have invalid height")
+	}
+
+	prevousHeader, err := v.chain.GetHeader(v.chain.Height())
+	if err != nil {
 		return err
 	}
-	
+
+	prevousBlockHash := BlockHasher{}.Hash(prevousHeader)
+	if prevousBlockHash != b.Header.PrevousHash {
+		return fmt.Errorf("the calculated hash of the prevous block is (%s) is not equal to prevous hash property (%d)", prevousBlockHash, prevousHeader.hash)
+	}
+
+
+	if err := b.Verify(); err != nil {
+		return err
+	}
 
 	return nil
 }

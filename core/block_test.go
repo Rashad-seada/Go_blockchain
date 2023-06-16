@@ -10,32 +10,48 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func randomBlock(height uint32) *Block {
+func randomBlock(height uint32,prevousHash types.Hash) *Block {
+
+	k := crypto.GenerateUniqueKeypair()
+
 	h := &Header{
 		Version: 1,
 		Height: height,
-		Hash: types.RandomHash(32),
-		PrevousHash: types.RandomHash(32),
+		PrevousHash: prevousHash,
 		TimpStamp: time.Now(),
-		Nounce: 100,
 	}
 
 	d := Data{
-		Transactions: make([]Transaction, 12),
+		Transactions: &[]Transaction{
+			Transaction{
+				Data: []byte("this code is written by the best coder of all times"),
+			},
+			Transaction{
+				Data: []byte("this code is written by the best coder of all times"),
+			},		
+	
+		},
 	}
 
-	return NewBlock(h,d)
+	for tx := range *d.Transactions {
+		(*d.Transactions)[tx].Sign(*k)
+	}
+
+	b := NewBlock(h,d)
+	b.Sign(*k)
+	b.Hash(BlockHasher{})
+	return b
 
 }
 
 func TestHashBlock(t *testing.T){
-	b := randomBlock(0)
-	fmt.Println(b.CalculateHash(BlockHasher{}))
+	b := randomBlock(0,types.Hash{})
+	fmt.Println(b.Hash(BlockHasher{}))
 }
 
 func TestVerificationBlock(t *testing.T){
 	keypair := crypto.GenerateUniqueKeypair()
-	b := randomBlock(0)
+	b := randomBlock(0,types.Hash{})
 
 	assert.Nil(t,b.Sign(*keypair))
 	assert.Nil(t,b.Verify())
@@ -44,7 +60,7 @@ func TestVerificationBlock(t *testing.T){
 
 func TestBlockSignature(t *testing.T){
 	keypair := crypto.GenerateUniqueKeypair()
-	b := randomBlock(0)
+	b := randomBlock(0,types.Hash{})
 	
 	assert.Nil(t,b.Sign(*keypair))
 	assert.Nil(t,b.Verify())

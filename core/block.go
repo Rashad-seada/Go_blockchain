@@ -12,35 +12,49 @@ import (
 )
 
 type Data struct {
-	Transactions []Transaction
+	Transactions *[]Transaction
 }
 
 type Header struct {
 	Version     uint32
 	Height      uint32
-	Hash        types.Hash
+	hash        types.Hash
 	PrevousHash types.Hash
 	TimpStamp   time.Time
-	Nounce      uint32
+}
+
+func (h *Header) Bytes() []byte {
+	buffer := &bytes.Buffer{}
+	gob.NewEncoder(buffer)
+	// encoder :=
+	// encoder.Encode(h)
+
+	return buffer.Bytes()
 }
 
 type Block struct {
-	Header *Header
-	Data   Data
-	Validator *ecdsa.PublicKey
-	Signature *crypto.Signature
-	Hash types.Hash
+	Header        *Header
+	Data          Data
+	Validator     *ecdsa.PublicKey
+	Signature     *crypto.Signature
+
+	//chached version of the header
+	DataHash          types.Hash
 }
 
-func NewBlock(h *Header,d Data) *Block {
+func NewBlock(h *Header, d Data) *Block {
 	return &Block{
 		Header: h,
-		Data: d,
+		Data:   d,
 	}
 }
 
+func (b *Block) AddTransaction(transaction *Transaction) {
+	*b.Data.Transactions = append(*b.Data.Transactions,*transaction)
+}
+
 func (b *Block) Sign(keypair crypto.Keypair) error {
-	sig , err := keypair.Sign(b.HeaderBytes())
+	sig, err := keypair.Sign(b.Header.Bytes())
 	if err != nil {
 		return err
 	}
@@ -51,38 +65,39 @@ func (b *Block) Sign(keypair crypto.Keypair) error {
 }
 
 func (b *Block) Verify() error {
+
 	if b.Signature == nil {
 		return fmt.Errorf("there is no signature for this block")
 	}
 
-	if !b.Signature.Verify(b.Validator,b.HeaderBytes()) {
+	if !b.Signature.Verify(b.Validator, b.Header.Bytes()) {
 		return fmt.Errorf("invald signature for this block")
+	}
+
+	for _, tx := range *b.Data.Transactions {
+		if err := tx.Verify(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (b *Block) Decode(r io.Reader, decoder Decoder[*Block]) error {
-	return decoder.Decode(r,b)
+	return decoder.Decode(r, b)
 }
 
 func (b *Block) Encode(w io.Writer, encoder Encoder[*Block]) error {
-	return encoder.Encode(w,b)
+	return encoder.Encode(w, b)
 }
 
-func (b *Block) CalculateHash(hasher Hasher[*Block]) types.Hash {
-	if b.Hash.IsZero() {
-		b.Hash = hasher.Hash(b)
+func (b *Block) Hash(hasher Hasher[*Header]) types.Hash {
+	if b.DataHash.IsZero() {
+		hash := hasher.Hash(b.Header)
+		b.DataHash = hash
+		b.Header.hash = hash
+
 	}
 
-	return b.Hash
+	return b.DataHash
 }
-
-func (b *Block) HeaderBytes() []byte {
-	buffer := &bytes.Buffer{}
-	encoder := gob.NewEncoder(buffer)
-	encoder.Encode(b.Header)
-
-	return buffer.Bytes()
-}
-

@@ -2,6 +2,7 @@ package core
 
 import (
 	"blockchain/crypto"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,6 +45,31 @@ func TestTransactionVerfication(t *testing.T) {
 
 	tx1.Data = []byte("rashad")
 	assert.NotNil(t,tx1.Verify())
+
+}
+
+func TestMultiTransactionVerification(t *testing.T){
+	Keypair1 := crypto.GenerateUniqueKeypair()
+
+	txs := []Transaction {
+		Transaction{
+			Data: []byte("this code is written by the best coder of all times"),
+		},
+		Transaction{
+			Data: []byte("this code is written by the best coder of all times"),
+		},
+		Transaction{
+			Data: []byte("this code is written by the best coder of all times"),
+		},
+	}
+
+	for i := range txs {
+		assert.Nil(t, txs[i].Sign(*Keypair1))
+		fmt.Println(txs[i])
+
+		assert.Nil(t, txs[i].Verify())
+		fmt.Println(txs[i])
+	}
 
 }
 	

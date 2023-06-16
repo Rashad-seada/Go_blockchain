@@ -11,8 +11,8 @@ import (
 
 type Transaction struct {
 	Data []byte
-	Hash types.Hash
-	publicKey *ecdsa.PublicKey
+	hash types.Hash
+	From *ecdsa.PublicKey
 	Signature *crypto.Signature
 }
 
@@ -30,7 +30,7 @@ func (t *Transaction) Sign(k crypto.Keypair)  error {
 		return err 
 	}
 
-	t.publicKey = k.PublicKey
+	t.From = k.PublicKey
 	t.Signature = sig
 
 	return nil
@@ -41,17 +41,17 @@ func (t *Transaction) Verify() error {
 		return fmt.Errorf("the Transaction has no signature")
 	}
 
-	if !t.Signature.Verify(t.publicKey,t.Data) {
+	if !t.Signature.Verify(t.From,t.Data) {
 		return fmt.Errorf("invalid transaction signature ")
 	}
 
 	return nil
 }
 
-func (t *Transaction) CalculateHash(hasher Hasher[*Transaction]) types.Hash {
-	if t.Hash.IsZero() {
-		t.Hash = hasher.Hash(t)
+func (t *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
+	if t.hash.IsZero() {
+		t.hash = hasher.Hash(t)
 	}
 
-	return t.Hash
+	return t.hash
 }
