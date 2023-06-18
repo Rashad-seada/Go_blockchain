@@ -15,8 +15,7 @@ type TransactionHasher struct {
 }
 
 func (TransactionHasher) Hash(t *Transaction) types.Hash {
-	h := sha256.Sum256(t.TransactionBytes())
-	return types.Hash(h)
+	return types.Hash(sha256.Sum256(t.Bytes()))
 }
 
 
@@ -25,6 +24,5 @@ type BlockHasher struct {
 }
 
 func (BlockHasher) Hash(b *Header) types.Hash {
-	h := sha256.Sum256(b.Bytes())
-	return types.Hash(h)
+	return types.Hash(sha256.Sum256(b.Bytes()))
 }

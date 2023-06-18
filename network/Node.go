@@ -1,55 +1,75 @@
 package network
 
 import (
-	"blockchain/crypto"
 	"fmt"
 	"time"
 )
 
 type NodeOptions struct {
-	Transports 	[]Transport
-	Keypair 	crypto.Keypair
+	Transports 	[]core.Transport
+	BlockTime 	time.Duration
+	Keypair 	*crypto.Keypair
 }
 
 type Node struct {
 	NodeOptions     NodeOptions
-	rpcChannel  chan RPC
-	quitChannel chan struct{}
+	blockTime 		time.Duration
+	memPool 		*TransactionPool
+	isValidator 	bool
+	rpcChannel  	chan RPC
+	quitChannel 	chan struct{}
 }
 
 func NewNode(options NodeOptions) *Node {
 	return &Node{
-		NodeOptions:     options,
-		rpcChannel:  make(chan RPC),
-		quitChannel: make(chan struct{}, 1),
+		NodeOptions:    options,
+		blockTime: 		options.BlockTime,
+		memPool: 		NewTransactionPool(),	
+		isValidator: 	options.Keypair != nil,
+		rpcChannel: 	make(chan RPC),
+		quitChannel: 	make(chan struct{}, 1),
 	}
 }
 
-func (s *Node) Start() {
-	s.initTransports()
+func (n *Node) Start() {
+	n.initTransports()
+	
+	ticker := time.NewTimer(n.blockTime)
 
-	ticker := time.NewTicker(5 * time.Second)
+	free:
+		for {
+			select {
+				case rpc := <-n.rpcChannel:
+					fmt.Println(string(rpc.payload))
+				case <-n.quitChannel:
+					break free
+				case <-ticker.C:
+					if n.isValidator {
+						n.createNewBlock()
+					}
+			}
 
-free:
-	for {
-		select {
-		case rpc := <-s.rpcChannel:
-			fmt.Println(string(rpc.payload))
-		case <-s.quitChannel:
-			break free
-		case <-ticker.C:
-			fmt.Println("do somthing every 5 seconds")
 		}
 
-	}
+	
 }
 
-func (s *Node) initTransports() {
-	for _, tr := range s.NodeOptions.Transports {
+func (n *Node) createNewBlock() error {
+	return nil
+}
+
+func (n *Node) handleTransactions(tx *Transaction) error {
+	if tx.Verify() {
+		
+	}
+} 
+
+func (n *Node) initTransports() {
+	for _, tr := range n.NodeOptions.Transports {
 
 		go func(tr Transport) {
 			for rpc := range tr.Consume() {
-				s.rpcChannel <- rpc
+				n.rpcChannel <- rpc
 			}
 		}(tr)
 

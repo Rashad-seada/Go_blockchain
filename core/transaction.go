@@ -16,11 +16,17 @@ type Transaction struct {
 	Signature *crypto.Signature
 }
 
-func (t *Transaction) TransactionBytes() []byte {
+func NewTransaction(data []byte) *Transaction {
+	return &Transaction{
+		Data: data,
+
+	}
+}
+
+func (t *Transaction) Bytes() []byte {
 	buffer := &bytes.Buffer{}
 	encoder := gob.NewEncoder(buffer)
-
-	encoder.Encode(t)
+	encoder.Encode(t.Data)
 	return buffer.Bytes()
 }
 

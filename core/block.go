@@ -25,10 +25,11 @@ type Header struct {
 
 func (h *Header) Bytes() []byte {
 	buffer := &bytes.Buffer{}
-	gob.NewEncoder(buffer)
-	// encoder :=
-	// encoder.Encode(h)
-
+	encoder := 	gob.NewEncoder(buffer)
+	encoder.Encode(h.Version)
+	encoder.Encode(h.Height)
+	encoder.Encode(h.PrevousHash)
+	encoder.Encode(h.TimpStamp)
 	return buffer.Bytes()
 }
 
