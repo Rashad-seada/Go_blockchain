@@ -10,12 +10,12 @@ import (
 )
 
 type Signature struct {
-	r *big.Int
-	s *big.Int
+	R *big.Int
+	S *big.Int
 }
 
 func (s *Signature) Verify(k *ecdsa.PublicKey, data []byte) bool {
-	return ecdsa.Verify(k,data,s.r,s.s)
+	return ecdsa.Verify(k,data,s.R,s.S)
 }
 
 type Keypair struct {
@@ -30,11 +30,11 @@ func (k *Keypair) Address() types.Address {
 }
 
 func (k *Keypair) Sign(data []byte) (*Signature,error) { 
-	r , s ,err := ecdsa.Sign(rand.Reader,k.PrivateKey,data)
+	R , S ,err := ecdsa.Sign(rand.Reader,k.PrivateKey,data)
 	if err != nil {
 		return nil , err
 	}
-	return &Signature{r:r,s:s} , nil
+	return &Signature{R:R,S:S} , nil
 }
 
 func GeneratePrivatekey() *ecdsa.PrivateKey {

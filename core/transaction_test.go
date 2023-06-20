@@ -2,6 +2,7 @@ package core
 
 import (
 	"blockchain/crypto"
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -71,6 +72,19 @@ func TestMultiTransactionVerification(t *testing.T){
 		fmt.Println(txs[i])
 	}
 
+}
+
+func TestTransactionEncoding(t *testing.T) {
+	tx := Transaction{
+		Data: []byte("this code is written by the best coder of all times"),
+	}
+	buffer := &bytes.Buffer{}
+	assert.Nil(t, tx.Encode(NewGobTxEncoder(buffer)))
+
+	txDecoded := Transaction{}
+	assert.Nil(t,txDecoded.Decode(NewGobTxDecoder(buffer)))
+
+	assert.Equal(t,tx,txDecoded)
 }
 	
 

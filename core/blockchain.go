@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"sync"
-
 	"github.com/sirupsen/logrus"
 )
 

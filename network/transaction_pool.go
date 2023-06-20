@@ -5,8 +5,16 @@ import (
 	"blockchain/types"
 )
 
+
+
 type TransactionPool struct {
 	transactions map[types.Hash]*core.Transaction
+}
+
+func (tp *TransactionPool) Transactions() []*core.Transaction {
+	s := NewTransactionMapSorter(tp.transactions)
+
+	return s.transactions
 }
 
 func NewTransactionPool() *TransactionPool {

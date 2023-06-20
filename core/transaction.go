@@ -11,17 +11,23 @@ import (
 
 type Transaction struct {
 	Data []byte
-	hash types.Hash
 	From *ecdsa.PublicKey
 	Signature *crypto.Signature
+
+	// cached version of the transaction data hash
+	hash types.Hash
+
+	// first seen is a timestamp of when this tx is first seen locally
+	firstSeen int64
 }
 
 func NewTransaction(data []byte) *Transaction {
 	return &Transaction{
 		Data: data,
-
 	}
 }
+
+
 
 func (t *Transaction) Bytes() []byte {
 	buffer := &bytes.Buffer{}
@@ -58,6 +64,21 @@ func (t *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
 	if t.hash.IsZero() {
 		t.hash = hasher.Hash(t)
 	}
-
 	return t.hash
+}
+
+func (tx *Transaction) SetSeen(t int64) {
+	tx.firstSeen = t
+}
+
+func (tx *Transaction) FirstSeen() int64 {
+	return tx.firstSeen
+}
+
+func (tx *Transaction) Decode( decoder Decoder[*Transaction]) error {
+	return decoder.Decode(tx)
+}
+
+func (tx *Transaction) Encode(encoder Encoder[*Transaction]) error {
+	return encoder.Encode(tx)
 }

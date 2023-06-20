@@ -1,12 +1,17 @@
 package network
 
 import (
+	"blockchain/core"
+	"blockchain/crypto"
+	"github.com/sirupsen/logrus"
 	"fmt"
 	"time"
 )
 
+var defaultBlockTime = 5 * time.Millisecond
+
 type NodeOptions struct {
-	Transports 	[]core.Transport
+	Transports 	[]Transport
 	BlockTime 	time.Duration
 	Keypair 	*crypto.Keypair
 }
@@ -21,6 +26,10 @@ type Node struct {
 }
 
 func NewNode(options NodeOptions) *Node {
+	if options.BlockTime == time.Duration(0) {
+		options.BlockTime = defaultBlockTime
+	}
+
 	return &Node{
 		NodeOptions:    options,
 		blockTime: 		options.BlockTime,
@@ -41,8 +50,10 @@ func (n *Node) Start() {
 			select {
 				case rpc := <-n.rpcChannel:
 					fmt.Println(string(rpc.payload))
+
 				case <-n.quitChannel:
 					break free
+
 				case <-ticker.C:
 					if n.isValidator {
 						n.createNewBlock()
@@ -51,17 +62,35 @@ func (n *Node) Start() {
 
 		}
 
-	
 }
 
 func (n *Node) createNewBlock() error {
 	return nil
 }
 
-func (n *Node) handleTransactions(tx *Transaction) error {
-	if tx.Verify() {
-		
+func (n *Node) handleTransactions(tx *core.Transaction) error {
+
+	hash := tx.Hash(core.TransactionHasher{})
+
+	if n.memPool.Has(hash) {
+		logrus.WithFields(logrus.Fields {
+			"hash":  tx.Hash(core.TransactionHasher{}),
+			},
+		).Info("memory pool already has this transaction")
+	
+		return nil
 	}
+
+	if err := tx.Verify(); err == nil  {
+		return err
+	}
+	
+	logrus.WithFields(logrus.Fields {
+		"hash":  tx.Hash(core.TransactionHasher{}),
+		},
+	).Info("adding new transaction to the memory pool")
+
+	return n.memPool.Add(tx)
 } 
 
 func (n *Node) initTransports() {
@@ -71,6 +100,7 @@ func (n *Node) initTransports() {
 			for rpc := range tr.Consume() {
 				n.rpcChannel <- rpc
 			}
+			
 		}(tr)
 
 	}

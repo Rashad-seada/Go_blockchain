@@ -1,6 +1,9 @@
 package main
 
-import "blockchain/network"
+import (
+	"blockchain/network"
+	"time"
+)
 
 func main() {
 	localTransport := network.NewLocalTransport("LOCAL")
@@ -12,7 +15,10 @@ func main() {
 	msg := []byte("hello local data")
 
 	go func() {
-		remoteTransport.SendMessage(localTransport.Address(), msg)
+		for {
+			time.Sleep(1 * time.Second)
+			remoteTransport.SendMessage(localTransport.Address(), msg)	
+		}
 	}()
 
 	options := network.NodeOptions{
