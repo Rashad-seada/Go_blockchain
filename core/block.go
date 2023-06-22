@@ -4,7 +4,6 @@ import (
 	"blockchain/crypto"
 	"blockchain/types"
 	"bytes"
-	"crypto/ecdsa"
 	"encoding/gob"
 	"fmt"
 	"time"
@@ -35,7 +34,7 @@ func (h *Header) Bytes() []byte {
 type Block struct {
 	Header        *Header
 	Data          Data
-	Validator     *ecdsa.PublicKey
+	Validator     crypto.PublicKey
 	Signature     *crypto.Signature
 
 	//chached version of the header
@@ -53,14 +52,14 @@ func (b *Block) AddTransaction(transaction *Transaction) {
 	*b.Data.Transactions = append(*b.Data.Transactions,*transaction)
 }
 
-func (b *Block) Sign(keypair crypto.Keypair) error {
-	sig, err := keypair.Sign(b.Header.Bytes())
+func (b *Block) Sign(privateKey crypto.PrivateKey) error {
+	sig, err := privateKey.Sign(b.Header.Bytes())
 	if err != nil {
 		return err
 	}
 
 	b.Signature = sig
-	b.Validator = keypair.PublicKey
+	b.Validator = privateKey.PublicKey()
 	return nil
 }
 

@@ -12,7 +12,7 @@ import (
 
 func randomBlock(height uint32,prevousHash types.Hash) *Block {
 
-	k := crypto.GenerateUniqueKeypair()
+	k := crypto.GeneratePrivateKey()
 
 	h := &Header{
 		Version: 1,
@@ -34,11 +34,11 @@ func randomBlock(height uint32,prevousHash types.Hash) *Block {
 	}
 
 	for tx := range *d.Transactions {
-		(*d.Transactions)[tx].Sign(*k)
+		(*d.Transactions)[tx].Sign(k)
 	}
 
 	b := NewBlock(h,d)
-	b.Sign(*k)
+	b.Sign(k)
 	b.Hash(BlockHasher{})
 	return b
 
@@ -50,19 +50,19 @@ func TestHashBlock(t *testing.T){
 }
 
 func TestVerificationBlock(t *testing.T){
-	keypair := crypto.GenerateUniqueKeypair()
+	keypair := crypto.GeneratePrivateKey()
 	b := randomBlock(0,types.Hash{})
 
-	assert.Nil(t,b.Sign(*keypair))
+	assert.Nil(t,b.Sign(keypair))
 	assert.Nil(t,b.Verify())
 }
 
 
 func TestBlockSignature(t *testing.T){
-	keypair := crypto.GenerateUniqueKeypair()
+	keypair := crypto.GeneratePrivateKey()
 	b := randomBlock(0,types.Hash{})
 	
-	assert.Nil(t,b.Sign(*keypair))
+	assert.Nil(t,b.Sign(keypair))
 	assert.Nil(t,b.Verify())
 	assert.NotNil(t,b.Signature)
 

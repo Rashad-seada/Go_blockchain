@@ -6,62 +6,76 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"math/big"
 )
 
-type Signature struct {
-	R *big.Int
-	S *big.Int
+type PrivateKey struct {
+	key *ecdsa.PrivateKey
 }
 
-func (s *Signature) Verify(k *ecdsa.PublicKey, data []byte) bool {
-	return ecdsa.Verify(k,data,s.R,s.S)
+func (k PrivateKey) Sign(data []byte) (*Signature, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, k.key, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Signature{
+		R: r,
+		S: s,
+	}, nil
 }
 
-type Keypair struct {
-	PublicKey  *ecdsa.PublicKey
-	PrivateKey *ecdsa.PrivateKey
+func NewPrivateKeyFromReader(r io.Reader) PrivateKey {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), r)
+	if err != nil {
+		panic(err)
+	}
+
+	return PrivateKey{
+		key: key,
+	}
 }
 
-func (k *Keypair) Address() types.Address {
-	h := sha256.Sum256(PublicKeyToSlice(*k.PublicKey))
+func GeneratePrivateKey() PrivateKey {
+	return NewPrivateKeyFromReader(rand.Reader)
+}
+
+
+func (k PrivateKey) PublicKey() PublicKey {
+	return PublicKey(elliptic.MarshalCompressed(k.key.PublicKey, k.key.PublicKey.X, k.key.PublicKey.Y))
+}
+
+type PublicKey []byte
+
+func (k PublicKey) String() string {
+	return hex.EncodeToString(k)
+}
+
+func (k PublicKey) Address() types.Address {
+	h := sha256.Sum256(k)
 
 	return types.NewAddressFromBytes(h[len(h)-20:])
 }
 
-func (k *Keypair) Sign(data []byte) (*Signature,error) { 
-	R , S ,err := ecdsa.Sign(rand.Reader,k.PrivateKey,data)
-	if err != nil {
-		return nil , err
+type Signature struct {
+	S *big.Int
+	R *big.Int
+}
+
+func (sig Signature) String() string {
+	b := append(sig.S.Bytes(), sig.R.Bytes()...)
+	return hex.EncodeToString(b)
+}
+
+func (sig Signature) Verify(pubKey PublicKey, data []byte) bool {
+	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), pubKey)
+	key := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
 	}
-	return &Signature{R:R,S:S} , nil
+
+	return ecdsa.Verify(key, data, sig.R, sig.S)
 }
-
-func GeneratePrivatekey() *ecdsa.PrivateKey {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	return privateKey
-}
-
-func GeneratePublickey(k ecdsa.PrivateKey) *ecdsa.PublicKey {
-	return &k.PublicKey
-}
-
-func GenerateUniqueKeypair() *Keypair {
-	privateKey := GeneratePrivatekey()
-	publicKey := GeneratePublickey(*privateKey)
-	keypair := &Keypair{
-		PrivateKey: privateKey,
-		PublicKey: publicKey,
-	}
-	return keypair
-}
-
-func PublicKeyToSlice(k ecdsa.PublicKey) []byte {
-	return elliptic.MarshalCompressed(k,k.X,k.Y)
-}
-
-
-	

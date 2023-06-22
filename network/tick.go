@@ -19,6 +19,7 @@ func NewTick() *Tick {
 func (t *Tick) StartTicker(tickDuration int){
 	hashSeed := "Rashad"
 
+
 	for {
 
 		for i := 0; i < tickDuration; i++ {

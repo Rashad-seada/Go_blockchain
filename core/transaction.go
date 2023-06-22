@@ -4,14 +4,14 @@ import (
 	"blockchain/crypto"
 	"blockchain/types"
 	"bytes"
-	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/gob"
 	"fmt"
 )
 
 type Transaction struct {
 	Data []byte
-	From *ecdsa.PublicKey
+	From crypto.PublicKey
 	Signature *crypto.Signature
 
 	// cached version of the transaction data hash
@@ -36,13 +36,13 @@ func (t *Transaction) Bytes() []byte {
 	return buffer.Bytes()
 }
 
-func (t *Transaction) Sign(k crypto.Keypair)  error {
+func (t *Transaction) Sign(k crypto.PrivateKey)  error {
 	sig , err := k.Sign(t.Data)
 	if err != nil {
 		return err 
 	}
 
-	t.From = k.PublicKey
+	t.From = k.PublicKey()
 	t.Signature = sig
 
 	return nil
@@ -53,7 +53,7 @@ func (t *Transaction) Verify() error {
 		return fmt.Errorf("the Transaction has no signature")
 	}
 
-	if !t.Signature.Verify(t.From,t.Data) {
+	if !t.Signature.Verify(t.From ,t.Data) {
 		return fmt.Errorf("invalid transaction signature ")
 	}
 
@@ -76,9 +76,11 @@ func (tx *Transaction) FirstSeen() int64 {
 }
 
 func (tx *Transaction) Decode( decoder Decoder[*Transaction]) error {
+	gob.Register(elliptic.P256())
 	return decoder.Decode(tx)
 }
 
 func (tx *Transaction) Encode(encoder Encoder[*Transaction]) error {
+	gob.Register(elliptic.P256())
 	return encoder.Encode(tx)
 }

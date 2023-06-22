@@ -3,17 +3,18 @@ package network
 import (
 	"blockchain/core"
 	"blockchain/crypto"
-	"github.com/sirupsen/logrus"
-	"fmt"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var defaultBlockTime = 5 * time.Millisecond
 
 type NodeOptions struct {
+	RPCHandler 	RPCHandler
 	Transports 	[]Transport
 	BlockTime 	time.Duration
-	Keypair 	*crypto.Keypair
+	PrivateKey  *crypto.PrivateKey
 }
 
 type Node struct {
@@ -26,18 +27,28 @@ type Node struct {
 }
 
 func NewNode(options NodeOptions) *Node {
+
+
 	if options.BlockTime == time.Duration(0) {
 		options.BlockTime = defaultBlockTime
 	}
 
-	return &Node{
+	node :=  &Node{
 		NodeOptions:    options,
 		blockTime: 		options.BlockTime,
 		memPool: 		NewTransactionPool(),	
-		isValidator: 	options.Keypair != nil,
+		isValidator: 	options.PrivateKey != nil,
 		rpcChannel: 	make(chan RPC),
 		quitChannel: 	make(chan struct{}, 1),
 	}
+
+	if options.RPCHandler == nil {
+		options.RPCHandler =  NewDefaultRCPHandler(node)
+	}
+
+	node.NodeOptions = options
+
+	return node
 }
 
 func (n *Node) Start() {
@@ -49,7 +60,9 @@ func (n *Node) Start() {
 		for {
 			select {
 				case rpc := <-n.rpcChannel:
-					fmt.Println(string(rpc.payload))
+					if err := n.NodeOptions.RPCHandler.HandleRPC(rpc) ; err != nil {
+						logrus.Error(err)
+					}
 
 				case <-n.quitChannel:
 					break free
@@ -68,11 +81,12 @@ func (n *Node) createNewBlock() error {
 	return nil
 }
 
-func (n *Node) handleTransactions(tx *core.Transaction) error {
+func (n *Node) ProcessTransaction(From NetworkAddress,tx *core.Transaction) error {
 
 	hash := tx.Hash(core.TransactionHasher{})
 
 	if n.memPool.Has(hash) {
+
 		logrus.WithFields(logrus.Fields {
 			"hash":  tx.Hash(core.TransactionHasher{}),
 			},
@@ -81,12 +95,16 @@ func (n *Node) handleTransactions(tx *core.Transaction) error {
 		return nil
 	}
 
-	if err := tx.Verify(); err == nil  {
+	if err := tx.Verify(); err != nil  {
 		return err
 	}
+
+	tx.SetSeen(time.Now().UnixNano())
 	
 	logrus.WithFields(logrus.Fields {
 		"hash":  tx.Hash(core.TransactionHasher{}),
+		"memory pool":  n.memPool.Len(),
+
 		},
 	).Info("adding new transaction to the memory pool")
 

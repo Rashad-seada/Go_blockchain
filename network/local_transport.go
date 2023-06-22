@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 )
@@ -38,13 +39,14 @@ func (transport *LocalTransport) SendMessage(to NetworkAddress,payload []byte) e
 	defer transport.lock.RUnlock()
 
 	peer , ok := transport.peers[to]
+	
 	if !ok {
 		return fmt.Errorf("cannot send the message to this address : %s : ",to)
 	}
 
 	peer.consumeChannal <- RPC{
 		from: transport.TransportAddress,
-		payload: payload,
+		payload: bytes.NewReader(payload),
 	}
 
 	return nil
