@@ -52,6 +52,19 @@ func (transport *LocalTransport) SendMessage(to NetworkAddress,payload []byte) e
 	return nil
 }
 
+func (tranport *LocalTransport) Broadcast(payload []byte) error {
+	for _, peer := range tranport.peers {
+		if peer.Address() != tranport.Address() {
+			if err := tranport.SendMessage(peer.Address(),payload) ; err != nil{
+				return err
+			}
+			
+		}
+	}
+
+	return nil
+}
+
 func (tranport *LocalTransport) Address() NetworkAddress {
 	return tranport.TransportAddress
 }

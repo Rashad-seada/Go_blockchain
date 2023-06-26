@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +38,26 @@ func TestSendMessages(t *testing.T){
 	rpc := <- traport2.Consume()
 	assert.Equal(t,rpc.payload ,bytes.NewReader(msg))
 	assert.Equal(t,rpc.from, traport1.Address())
+}
+
+func TestBroadcast(t *testing.T) {
+	traport1 := NewLocalTransport("A")
+	traport2 := NewLocalTransport("B")
+	traport3 := NewLocalTransport("C")
+
+	traport1.Connect(traport2)
+	traport1.Connect(traport3)
+
+	msg := []byte("hello from")
+	assert.Nil(t,traport1.Broadcast(msg))
+
+	rpcB := <- traport2.Consume()
+	b,errB := io.ReadAll(rpcB.payload)
+	assert.Nil(t,errB)
+	assert.Equal(t,b,msg)
+
+	rpcC := <- traport3.Consume()
+	c,errC := io.ReadAll(rpcC.payload)
+	assert.Nil(t,errC)
+	assert.Equal(t,c,msg)
 }

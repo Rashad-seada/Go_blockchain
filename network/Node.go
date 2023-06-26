@@ -11,15 +11,15 @@ import (
 var defaultBlockTime = 5 * time.Millisecond
 
 type NodeOptions struct {
-	RPCHandler 	RPCHandler
-	Transports 	[]Transport
-	BlockTime 	time.Duration
-	PrivateKey  *crypto.PrivateKey
+	RPCDecodeFunc 	RPCDecodeFunc
+	RPCProcessor 	RPCProcessor
+	Transports 		[]Transport
+	BlockTime 		time.Duration
+	PrivateKey  	*crypto.PrivateKey
 }
 
 type Node struct {
 	NodeOptions     NodeOptions
-	blockTime 		time.Duration
 	memPool 		*TransactionPool
 	isValidator 	bool
 	rpcChannel  	chan RPC
@@ -33,44 +33,49 @@ func NewNode(options NodeOptions) *Node {
 		options.BlockTime = defaultBlockTime
 	}
 
+	if options.RPCDecodeFunc == nil {
+		options.RPCDecodeFunc =  DefaultRPCDecodeFunc
+	}
+
 	node :=  &Node{
 		NodeOptions:    options,
-		blockTime: 		options.BlockTime,
 		memPool: 		NewTransactionPool(),	
 		isValidator: 	options.PrivateKey != nil,
 		rpcChannel: 	make(chan RPC),
 		quitChannel: 	make(chan struct{}, 1),
 	}
 
-	if options.RPCHandler == nil {
-		options.RPCHandler =  NewDefaultRCPHandler(node)
+	if options.RPCProcessor == nil {
+		node.NodeOptions.RPCProcessor = node
 	}
-
-	node.NodeOptions = options
-
+	
+	if node.isValidator {
+		go node.ValidatorLoop()
+	}
+	
 	return node
 }
 
 func (n *Node) Start() {
 	n.initTransports()
 	
-	ticker := time.NewTimer(n.blockTime)
-
 	free:
+	
 		for {
+
 			select {
 				case rpc := <-n.rpcChannel:
-					if err := n.NodeOptions.RPCHandler.HandleRPC(rpc) ; err != nil {
+					msg , err := n.NodeOptions.RPCDecodeFunc(rpc)
+					if err != nil {
+						logrus.Error(err)
+					}
+
+					if err := n.NodeOptions.RPCProcessor.ProcessMessaage(msg) ; err != nil {
 						logrus.Error(err)
 					}
 
 				case <-n.quitChannel:
 					break free
-
-				case <-ticker.C:
-					if n.isValidator {
-						n.createNewBlock()
-					}
 			}
 
 		}
@@ -81,7 +86,25 @@ func (n *Node) createNewBlock() error {
 	return nil
 }
 
-func (n *Node) ProcessTransaction(From NetworkAddress,tx *core.Transaction) error {
+func (n *Node) ValidatorLoop() {
+	ticker := time.NewTicker(n.NodeOptions.BlockTime)
+
+	for {
+		<- ticker.C
+		n.createNewBlock()
+	}
+}
+
+func (n *Node) ProcessMessaage(msg *DecodedMessage) error {
+	switch t := msg.Data.(type) {
+	case *core.Transaction :
+		return n.processTransaction(t)
+	}
+
+	return nil
+}
+
+func (n *Node) processTransaction(tx *core.Transaction) error {
 
 	hash := tx.Hash(core.TransactionHasher{})
 

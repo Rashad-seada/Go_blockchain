@@ -37,26 +37,18 @@ func (m *Message) Bytes() []byte {
 	gob.NewEncoder(buf).Encode(m)
 	return buf.Bytes()
 }
- 
-type RPCHandler interface {
-	HandleRPC(rpc RPC) error
+
+type DecodedMessage struct {
+	From NetworkAddress
+	Data any
 }
 
-type DefaultRCPHandler struct {
-	p RPCProcessor
-}
+type RPCDecodeFunc func (RPC) (*DecodedMessage,error)
 
-func NewDefaultRCPHandler(p RPCProcessor) *DefaultRCPHandler{
-	return &DefaultRCPHandler{
-		p:p,
-	}
-}
-
-func (h *DefaultRCPHandler) HandleRPC(rpc RPC) error {
-
+func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage,error) {
 	msg := Message{}
 	if err := gob.NewDecoder(rpc.payload).Decode(&msg) ; err != nil {
-		return fmt.Errorf("Failed to decode message from this node %s : %s",rpc.from,err)
+		return nil , fmt.Errorf("failed to decode message from this node %s : %s",rpc.from,err)
 	}
 
 	switch msg.Header {
@@ -64,20 +56,20 @@ func (h *DefaultRCPHandler) HandleRPC(rpc RPC) error {
 	case MessageTypeTx:
 		tx := new(core.Transaction)
 		if err := tx.Decode(core.NewGobTxDecoder(bytes.NewReader(msg.Data))) ; err != nil {
-			return err
+			return nil , err
 		}
-		return h.p.ProcessTransaction(rpc.from,tx)
+		return &DecodedMessage{
+			From: rpc.from,
+			Data: tx,
+		} , nil
 
 
 	default: 
-		return fmt.Errorf("invalid message header %x",msg.Header)
-
-		
+		return nil , fmt.Errorf("invalid message header %x",msg.Header)
 	}
-
 }
 
 
 type RPCProcessor interface {
-	ProcessTransaction(NetworkAddress, *core.Transaction) error
+	ProcessMessaage(*DecodedMessage) error
 }
